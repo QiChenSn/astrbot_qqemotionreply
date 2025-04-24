@@ -26,7 +26,7 @@ emoji_list = [
     '128560', '128563'
 ]
 
-@register("astrbot_qqemotionreply", "QiChen", "让bot给消息回应表情", "1.0.0")
+@register("astrbot_qqemotionreply", "QiChen", "让bot给消息回应表情", "1.1.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
@@ -35,27 +35,34 @@ class MyPlugin(Star):
         self.default_emoji_num=config.get('default_emoji_num')
         self.time_interval=config.get('time_interval')
         self.open_admin_mode=config.get('open_admin_mode')
+        #读取astrbot配置中的管理员id
+        self.admin_list=self.context.get_config().admins_id
     
     #使用指令的方式贴表情
     @filter.command("贴表情", alias={'fill', '贴'})
     async def replyMessage(self, event: AstrMessageEvent,emojiNum:int=-1):
         #如果用户未输入参数,读取配置文件默认值
+        keyed_num=True
         if emojiNum==-1:
+            keyed_num=False
             emojiNum=self.default_emoji_num
 
         replyID=await self.get_reply_id(event)
         receiverID=await self.get_receiver_id(event)
+        should_send=True
 
-        #管理员无法选中逻辑
+        #管理员模式对应逻辑
         if self.open_admin_mode:
-            #TODO:逻辑暂未实现
-            pass
+            if receiverID in self.admin_list:
+                should_send=False
+            elif not keyed_num:
+                emojiNum=20
         
         if(emojiNum>20):
             emojiNum=20
             yield event.plain_result("贴表情数量超出上限,已设为20")
 
-        if replyID:
+        if replyID and should_send:
             # 调用贴表情函数，这里可以传入不同的表情 ID
             #随机发送指定数量的表情
             rand_emoji_list=random.sample(emoji_list,emojiNum)
@@ -83,7 +90,7 @@ class MyPlugin(Star):
                 break
         return replyID
     
-    #获取接收者id
+    #获取接收者id(返回为str类型)
     async def get_receiver_id(self,event):
         message_chain = event.message_obj.message
         #获取接收者id
@@ -92,8 +99,7 @@ class MyPlugin(Star):
             if message.type=="Reply":
                 receiverID=message.sender_id
                 break
-        logger.info(f"===接收者ID:{receiverID}===")
-        return receiverID
+        return str(receiverID)
 
 
     async def send_emoji(self, event, message_id, emoji_id):
