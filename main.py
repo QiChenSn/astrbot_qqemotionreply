@@ -5,6 +5,7 @@ from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
+from astrbot.api import AstrBotConfig
 
 emoji_list = [
     # 系统表情（type=1，ID为数字，存储为整数）
@@ -27,14 +28,28 @@ emoji_list = [
 
 @register("astrbot_qqemotionreply", "QiChen", "让bot给消息回应表情", "1.0.0")
 class MyPlugin(Star):
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
+        #读取配置文件
+        self.config = config
+        self.default_emoji_num=config.get('default_emoji_num')
+        self.time_interval=config.get('time_interval')
+        self.open_admin_mode=config.get('open_admin_mode')
     
     #使用指令的方式贴表情
     @filter.command("贴表情", alias={'fill', '贴'})
-    async def replyMessage(self, event: AstrMessageEvent,emojiNum:int=20):
+    async def replyMessage(self, event: AstrMessageEvent,emojiNum:int=-1):
+        #如果用户未输入参数,读取配置文件默认值
+        if emojiNum==-1:
+            emojiNum=self.default_emoji_num
 
         replyID=await self.get_reply_id(event)
+        receiverID=await self.get_receiver_id(event)
+
+        #管理员无法选中逻辑
+        if self.open_admin_mode:
+            #TODO:逻辑暂未实现
+            pass
         
         if(emojiNum>20):
             emojiNum=20
@@ -47,7 +62,7 @@ class MyPlugin(Star):
             for id in rand_emoji_list:
                 await self.send_emoji(event, replyID, id)
                 #防止请求过于密集
-                sleep(0.5)
+                sleep(self.time_interval)
     
     @filter.command("erhelp", alias={'贴表情帮助', '表情帮助'})
     async def showHelp(self,event:AstrMessageEvent):
@@ -57,18 +72,6 @@ class MyPlugin(Star):
 """
         yield event.plain_result(help_text)
 
-    # #注册消息监听器,实现检测到消息被贴了特定表情时,bot会直接填满
-    # @event_message_type(EventMessageType.GROUP_MESSAGE)
-    # async def on_all_message(self, event: AstrMessageEvent):
-    #     message_id=event.message_obj.message_id
-    #     is_need_fill=await self.check_for_emoji(event,message_id)
-    #     if(is_need_fill):
-    #         rand_emoji_list=random.sample(emoji_list,20)
-    #         for id in rand_emoji_list:
-    #             await self.send_emoji(event,message_id, id)
-    #             #防止请求过于密集
-    #             sleep(0.5)
-
     #获取转发消息id
     async def get_reply_id(self,event):
         message_chain = event.message_obj.message
@@ -77,9 +80,20 @@ class MyPlugin(Star):
         for message in message_chain:
             if message.type == "Reply":
                 replyID = message.id
-                logger.info("ReplyID :" + replyID)
                 break
         return replyID
+    
+    #获取接收者id
+    async def get_receiver_id(self,event):
+        message_chain = event.message_obj.message
+        #获取接收者id
+        receiverID=None
+        for message in message_chain:
+            if message.type=="Reply":
+                receiverID=message.sender_id
+                break
+        logger.info(f"===接收者ID:{receiverID}===")
+        return receiverID
 
 
     async def send_emoji(self, event, message_id, emoji_id):
@@ -106,20 +120,4 @@ class MyPlugin(Star):
             else:
                 logger.error("未知错误")
 
-    # #默认检测表情66(qq自己的爱心表情)
-    # async def check_for_emoji(self,event,message_id,check_id=66):
-    #     if event.get_platform_name() == "aiocqhttp":
-    #         # qq
-    #         assert isinstance(event, AiocqhttpMessageEvent)
-    #         client = event.bot  # 得到 client
-    #         payloads = {
-    #             "message_id": message_id,
-    #             "emojiId": check_id,
-    #             "emojiType": "1"
-    #         }   
-    #         ret = await client.api.call_action('fetch_emoji_like', **payloads)  # 调用 协议端  API
-    #         if ret.get("emojiLikesList"):
-    #             return True
-    #         else:
-    #             return False
     

@@ -1,0 +1,20 @@
+{
+    "default_emoji_num":{
+        "description":"默认贴表情数量",
+        "type":"int",
+        "hint":"不填参数时默认的贴表情数量",
+        "default":5
+    },
+    "time_interval":{
+        "description":"贴表情时间间隔",
+        "type":"float",
+        "hint":"发送贴表情请求时sleep()的时长",
+        "default":0.5
+    },
+    "open_admin_mode":{
+        "description":"启用系统管理员优待模式",
+        "type":"bool",
+        "hint":"管理员无法被填满,填满别人时默认20",
+        "default":false
+    }
+}
