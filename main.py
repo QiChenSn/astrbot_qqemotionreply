@@ -50,12 +50,14 @@ class MyPlugin(Star):
         replyID=await self.get_reply_id(event)
         receiverID=await self.get_receiver_id(event)
         should_send=True
+        sender_id=event.get_sender_id()
+        logger.info(f"发送者id{sender_id}")
 
         #管理员模式对应逻辑
         if self.open_admin_mode:
             if receiverID in self.admin_list:
                 should_send=False
-            elif not keyed_num:
+            elif not keyed_num and str(sender_id) in self.admin_list:
                 emojiNum=20
         
         if(emojiNum>20):
